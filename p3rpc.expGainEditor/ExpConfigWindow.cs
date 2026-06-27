@@ -46,7 +46,7 @@ internal sealed class ExpConfigWindow : Window
         { 0.32, 0.40, 0.48, 0.53, 0.59, 0.64, 0.73, 0.80, 0.86, 0.91, 1.0, 1.0, 1.0, 1.0, 1.04, 1.19, 1.46, 1.77, 2.30, 3.10, 4.0 };
 
     private readonly Config _config;
-    private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _miniboss = null!, _boss = null!, _strength = null!, _wand = null!;
+    private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _miniboss = null!, _boss = null!, _reaper = null!, _strength = null!, _wand = null!;
     private Canvas _graph = null!;
 
     // hover crosshair: a transparent overlay canvas (never cleared by RedrawGraph) tracks the cursor and
@@ -112,14 +112,19 @@ internal sealed class ExpConfigWindow : Window
         _strong   = AddKnob(groups, "Strong Shadows",  "Tankier glowing field shadows. ~4× a normal's EXP.", _config.StrongShadowExp);
         _rare     = AddKnob(groups, "Rare Shadows",    "Gold-bordered fleeing shadows. ~15× normal EXP.", _config.RareShadowExp);
         _miniboss = AddKnob(groups, "Minibosses",      "Tanky 'guardian' encounters (gatekeepers / Monad). ~2× normal.", _config.MinibossExp);
-        _boss     = AddKnob(groups, "Bosses",          "Story / endgame bosses & superbosses. ~30× normal (roughly 25–45×).", _config.BossExp);
+        _boss     = AddKnob(groups, "Bosses",          "Story / endgame bosses & superbosses. ~30× normal (roughly 25–45×). Excludes the Reaper.", _config.BossExp);
+        _reaper   = AddKnob(groups, "The Reaper",      "The lone roaming superboss & famous EXP farm (175,820 base EXP). Split out of Bosses so you can tune him alone.", _config.ReaperExp);
 
-        // 3. Level Scaling (slider + the live curve graph)
-        var scaling = new StackPanel();
-        _strength = AddKnob(scaling, "Scaling Strength",
+        // 3. Level Scaling (slider + the live curve graph). DockPanel so the graph card fills the section's
+        // height (the section is the right column's stretchy filler), letting the graph grow with no gap.
+        var scalingTop = new StackPanel();
+        _strength = AddKnob(scalingTop, "Scaling Strength",
             "Blends the curve below toward flat: 1 = vanilla, 0 = level ignored, >1 exaggerates the bonus/penalty.",
             _config.LevelGapScalingStrength, onChanged: RedrawGraph);
-        scaling.Children.Add(BuildGraphCard());
+        var scaling = new DockPanel();
+        DockPanel.SetDock(scalingTop, Dock.Top);
+        scaling.Children.Add(scalingTop);
+        scaling.Children.Add(BuildGraphCard());   // fills
 
         // 4. Shuffle Time
         var shuffle = new StackPanel();
@@ -127,9 +132,9 @@ internal sealed class ExpConfigWindow : Window
             "EXP granted by Wand minor-arcana cards during Shuffle Time.", _config.ShuffleWandExp);
 
         // Two columns to keep the window short enough for 720p/1080p. Left: the enemy-EXP knobs.
-        // Right: level scaling (with the graph) and shuffle. Each column is a DockPanel whose LAST section
-        // fills the remaining height, so the shorter column's bottom card stretches to align its bottom
-        // edge with the taller column (self-balancing, no pixel tuning).
+        // Right: level scaling (with the graph) and shuffle. The columns self-balance: the left fills its
+        // last section, and on the right the Level Scaling section fills so the GRAPH stretches to match the
+        // left column's height — no dead space, no pixel tuning, even if the text changes later.
         var globalSec = Section("1.  Global", global);
         var enemySec = Section("2.  Enemy Groups", groups);
         DockPanel.SetDock(globalSec, Dock.Top);
@@ -139,10 +144,10 @@ internal sealed class ExpConfigWindow : Window
 
         var scalingSec = Section("3.  Level Scaling", scaling);
         var shuffleSec = Section("4.  Shuffle Time", shuffle);
-        DockPanel.SetDock(scalingSec, Dock.Top);
+        DockPanel.SetDock(shuffleSec, Dock.Bottom);
         var rightCol = new DockPanel { Width = 480, Margin = new Thickness(12, 0, 0, 0) };
-        rightCol.Children.Add(scalingSec);
-        rightCol.Children.Add(shuffleSec);  // fills remaining height
+        rightCol.Children.Add(shuffleSec);
+        rightCol.Children.Add(scalingSec);  // Level Scaling fills -> its graph stretches to match the left column
 
         var cols = new Grid();
         cols.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -177,17 +182,22 @@ internal sealed class ExpConfigWindow : Window
     /// <summary>A titled card: header strip + a padded body panel.</summary>
     private Border Section(string title, UIElement body)
     {
-        var stack = new StackPanel();
-        stack.Children.Add(new Border
+        var header = new Border
         {
             Background = Chip,
             BorderBrush = Edge,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new TextBlock { Text = title, Foreground = Text, FontWeight = FontWeights.Bold, Margin = new Thickness(10, 6, 10, 6) },
-        });
+        };
         // Background MUST be set explicitly: the launcher's WPF theme puts an implicit (bright) Background
         // on bg-less Borders, which leaks through any container we don't paint ourselves.
-        stack.Children.Add(new Border { Background = Panel, Padding = new Thickness(12, 10, 12, 6), Child = body });
+        var bodyCard = new Border { Background = Panel, Padding = new Thickness(12, 10, 12, 6), Child = body };
+
+        // DockPanel (header on top, body fills) so a stretched section hands its extra height to the body.
+        var stack = new DockPanel();
+        DockPanel.SetDock(header, Dock.Top);
+        stack.Children.Add(header);
+        stack.Children.Add(bodyCard);
 
         return new Border
         {
@@ -294,21 +304,25 @@ internal sealed class ExpConfigWindow : Window
     }
 
     // ---- the live level-gap EXP curve graph -----------------------------
-    private const double GraphW = 432, GraphH = 200;
+    private const double GraphW = 432, GraphH = 250;   // GraphH = floor/default height; the graph grows past it to fill the column
     private const double PadL = 34, PadR = 10, PadT = 12, PadB = 24;
+    private double _gh = GraphH;                        // live graph height (updated from the canvas's SizeChanged)
 
     private Border BuildGraphCard()
     {
-        _graph = new Canvas { Width = GraphW, Height = GraphH, Background = Bg, ClipToBounds = true };
+        // The canvases stretch vertically (with a MinHeight floor) so the graph fills whatever height the
+        // right column needs to match the left; RedrawGraph reads the live height (_gh) from SizeChanged.
+        _graph = new Canvas { Width = GraphW, MinHeight = GraphH, VerticalAlignment = VerticalAlignment.Stretch, Background = Bg, ClipToBounds = true };
+        _graph.SizeChanged += (_, e) => { if (e.NewSize.Height > PadT + PadB + 10) { _gh = e.NewSize.Height; RedrawGraph(); } };
 
         // Transparent overlay on top of the graph: receives hover, draws the crosshair. RedrawGraph only
         // clears _graph, so the crosshair survives slider changes. Transparent bg still hit-tests.
-        _overlay = new Canvas { Width = GraphW, Height = GraphH, Background = Brushes.Transparent, ClipToBounds = true };
+        _overlay = new Canvas { Width = GraphW, MinHeight = GraphH, VerticalAlignment = VerticalAlignment.Stretch, Background = Brushes.Transparent, ClipToBounds = true };
         BuildCrosshair();
         _overlay.MouseMove += OnGraphHover;
         _overlay.MouseLeave += (_, __) => SetCrosshair(false);
 
-        var stack = new Grid { Width = GraphW, Height = GraphH };
+        var stack = new Grid { Width = GraphW };
         stack.Children.Add(_graph);
         stack.Children.Add(_overlay);
 
@@ -318,9 +332,11 @@ internal sealed class ExpConfigWindow : Window
         var note = new TextBlock { Text = "x = enemy lvl − yours (±10)   •   hover to read a point", Foreground = Sub, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0) };
         legend.Children.Add(note);
 
-        var wrap = new StackPanel { Margin = new Thickness(0, 4, 0, 4) };
-        wrap.Children.Add(new Border { Background = Bg, BorderBrush = Edge, BorderThickness = new Thickness(1), Child = stack });
+        // DockPanel so the framed graph fills the card's height and the legend stays pinned at the bottom.
+        var wrap = new DockPanel { Margin = new Thickness(0, 4, 0, 4) };
+        DockPanel.SetDock(legend, Dock.Bottom);
         wrap.Children.Add(legend);
+        wrap.Children.Add(new Border { Background = Bg, BorderBrush = Edge, BorderThickness = new Thickness(1), Child = stack });  // fills
         return new Border { Background = Panel, Child = wrap };   // explicit bg (see Section: theme leak)
     }
 
@@ -347,7 +363,7 @@ internal sealed class ExpConfigWindow : Window
 
     private void OnGraphHover(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        double plotW = GraphW - PadL - PadR, plotH = GraphH - PadT - PadB;
+        double plotW = GraphW - PadL - PadR, plotH = _gh - PadT - PadB;
         double baseY = PadT + plotH;                          // y for ratio = 0 (the x-axis)
         double mx = Math.Clamp(e.GetPosition(_overlay).X, PadL, GraphW - PadR);
         double t = (mx - PadL) / plotW;                       // 0..1 across the gap axis
@@ -409,7 +425,7 @@ internal sealed class ExpConfigWindow : Window
         SetCrosshair(false);                     // hide stale crosshair while the curve changes
         int yStep = maxY <= 4 ? 1 : maxY <= 8 ? 2 : (int)Math.Ceiling(maxY / 4.0);
 
-        double plotW = GraphW - PadL - PadR, plotH = GraphH - PadT - PadB;
+        double plotW = GraphW - PadL - PadR, plotH = _gh - PadT - PadB;
         double X(double i) => PadL + plotW * (i / (Vanilla.Length - 1));   // accepts fractional index for step edges
         double Y(double r) => PadT + plotH * (1.0 - r / maxY);
 
@@ -427,8 +443,8 @@ internal sealed class ExpConfigWindow : Window
         {
             int i = gap + 10;
             double x = X(i);
-            _graph.Children.Add(new Line { X1 = x, Y1 = PadT, X2 = x, Y2 = GraphH - PadB, Stroke = Frozen("#FF2C2C30"), StrokeThickness = 1 });
-            _graph.Children.Add(Label(gap > 0 ? $"+{gap}" : gap.ToString(), x - 14, GraphH - PadB + 4, Sub, 10, TextAlignment.Center, 28));
+            _graph.Children.Add(new Line { X1 = x, Y1 = PadT, X2 = x, Y2 = _gh - PadB, Stroke = Frozen("#FF2C2C30"), StrokeThickness = 1 });
+            _graph.Children.Add(Label(gap > 0 ? $"+{gap}" : gap.ToString(), x - 14, _gh - PadB + 4, Sub, 10, TextAlignment.Center, 28));
         }
 
         // vanilla curve (gray dashed) then current curve (accent solid, on top)
@@ -507,6 +523,7 @@ internal sealed class ExpConfigWindow : Window
         _config.RareShadowExp = _rare.Value;
         _config.MinibossExp = _miniboss.Value;
         _config.BossExp = _boss.Value;
+        _config.ReaperExp = _reaper.Value;
         _config.LevelGapScalingStrength = _strength.Value;
         _config.ShuffleWandExp = _wand.Value;
         _config.Save?.Invoke();

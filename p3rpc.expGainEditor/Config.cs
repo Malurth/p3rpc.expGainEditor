@@ -47,9 +47,15 @@ public class Config : Configurable<Config>
 
     [Category("2. Enemy Groups")]
     [DisplayName("Bosses")]
-    [Description("EXP multiplier for major story/endgame bosses and superbosses (the highest-EXP enemies; ~30x normal EXP, roughly 25-45x). 1.0 = vanilla.")]
+    [Description("EXP multiplier for major story/endgame bosses and superbosses (the highest-EXP enemies; ~30x normal EXP, roughly 25-45x). Excludes the Reaper (see below). 1.0 = vanilla.")]
     [DefaultValue(1.0)]
     public double BossExp { get; set; } = 1.0;
+
+    [Category("2. Enemy Groups")]
+    [DisplayName("The Reaper")]
+    [Description("EXP multiplier for the Reaper - the lone roaming superboss and famous EXP farm (175,820 base EXP, by far the most in the game). Split out of the Bosses group so you can tune him on his own. 1.0 = vanilla.")]
+    [DefaultValue(1.0)]
+    public double ReaperExp { get; set; } = 1.0;
 
     // ---- level-gap scaling ----------------------------------------------
     [Category("3. Level Scaling")]

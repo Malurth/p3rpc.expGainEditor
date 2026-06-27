@@ -42,7 +42,8 @@ public class Mod : ModBase
     //   Rare    = flags bit 9  (0x200)            (~15x, low-HP gold fleeing shadows)
     //   Miniboss= flags bit 8  (0x100), low reward(~2x, tanky guardians: gatekeepers/Monad)
     //   Boss    = flags bit 8  (0x100), high reward(~30x, story/endgame/superbosses)
-    public enum EnemyGroup { Normal, Strong, Rare, Miniboss, Boss }
+    //   Reaper  = the lone roaming superboss (race 14, 175820 EXP) carved out of Boss for its own knob
+    public enum EnemyGroup { Normal, Strong, Rare, Miniboss, Boss, Reaper }
 
     private double GroupMultiplier(EnemyGroup g) => _configuration.GlobalEnemyExp * (g switch
     {
@@ -51,6 +52,7 @@ public class Mod : ModBase
         EnemyGroup.Rare => _configuration.RareShadowExp,
         EnemyGroup.Miniboss => _configuration.MinibossExp,
         EnemyGroup.Boss => _configuration.BossExp,
+        EnemyGroup.Reaper => _configuration.ReaperExp,
         _ => 1.0,
     });
 

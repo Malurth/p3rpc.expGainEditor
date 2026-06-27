@@ -339,10 +339,11 @@ internal sealed class ExpConfigWindow : Window
         double baseY = PadT + plotH;                          // y for ratio = 0 (the x-axis)
         double mx = Math.Clamp(e.GetPosition(_overlay).X, PadL, GraphW - PadR);
         double t = (mx - PadL) / plotW;                       // 0..1 across the gap axis
-        double idxF = t * (Vanilla.Length - 1);
-        int i0 = Math.Min((int)Math.Floor(idxF), Vanilla.Length - 2);
-        double frac = idxF - i0;
-        double ratio = _curRatios[i0] + (_curRatios[i0 + 1] - _curRatios[i0]) * frac;   // curve value at mx
+
+        // Level gaps are integers: snap to the nearest one and read its exact ratio (no interpolation -
+        // the curve is a staircase). The dot rides the flat top of that step.
+        int gap = Math.Clamp((int)Math.Round(-10 + t * 20.0), -10, 10);
+        double ratio = _curRatios[gap + 10];
         double cy = PadT + plotH * (1.0 - ratio / _maxY);
 
         // A single vertical guide rising from the x-axis to the dot on the curve. No horizontal line.
@@ -350,7 +351,6 @@ internal sealed class ExpConfigWindow : Window
         Canvas.SetLeft(_hvDot, mx - _hvDot.Width / 2);
         Canvas.SetTop(_hvDot, cy - _hvDot.Height / 2);
 
-        int gap = (int)Math.Round(-10 + t * 20.0);
         _hvText.Text = $"{(gap > 0 ? "+" : "")}{gap} lvl   →   {ratio:0.00}×";
         _hvLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         double lw = _hvLabel.DesiredSize.Width, lh = _hvLabel.DesiredSize.Height;
@@ -398,7 +398,7 @@ internal sealed class ExpConfigWindow : Window
         int yStep = maxY <= 4 ? 1 : maxY <= 8 ? 2 : (int)Math.Ceiling(maxY / 4.0);
 
         double plotW = GraphW - PadL - PadR, plotH = GraphH - PadT - PadB;
-        double X(int i) => PadL + plotW * (i / (double)(Vanilla.Length - 1));
+        double X(double i) => PadL + plotW * (i / (Vanilla.Length - 1));   // accepts fractional index for step edges
         double Y(double r) => PadT + plotH * (1.0 - r / maxY);
 
         // horizontal gridlines + y labels
@@ -428,11 +428,22 @@ internal sealed class ExpConfigWindow : Window
         AddReadout(10, cur[^1], X(Vanilla.Length - 1), Y(cur[^1]), above: true);
     }
 
-    private Polyline MakeCurve(double[] data, Func<double, double> Y, Func<int, double> X, Brush stroke, double thick, bool dashed)
+    // Level gaps are integers, so the ratio is a discrete lookup, not a continuous function. Draw it as a
+    // centered step (staircase): each gap holds a flat value across its ±0.5 band; the end gaps (clamped at
+    // ±10) extend to the plot edges.
+    private Polyline MakeCurve(double[] data, Func<double, double> Y, Func<double, double> X, Brush stroke, double thick, bool dashed)
     {
-        var pts = new PointCollection(data.Length);
-        for (int i = 0; i < data.Length; i++) pts.Add(new Point(X(i), Y(data[i])));
-        var pl = new Polyline { Points = pts, Stroke = stroke, StrokeThickness = thick, StrokeLineJoin = PenLineJoin.Round };
+        int n = data.Length;
+        var pts = new PointCollection(n * 2);
+        for (int i = 0; i < n; i++)
+        {
+            double xl = i == 0 ? X(0) : X(i - 0.5);
+            double xr = i == n - 1 ? X(n - 1) : X(i + 0.5);
+            double y = Y(data[i]);
+            pts.Add(new Point(xl, y));
+            pts.Add(new Point(xr, y));
+        }
+        var pl = new Polyline { Points = pts, Stroke = stroke, StrokeThickness = thick, StrokeLineJoin = PenLineJoin.Miter };
         if (dashed) pl.StrokeDashArray = new DoubleCollection { 3, 2 };
         return pl;
     }

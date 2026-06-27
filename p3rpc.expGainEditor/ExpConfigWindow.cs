@@ -108,7 +108,7 @@ internal sealed class ExpConfigWindow : Window
 
         // 2. Enemy Groups
         var groups = new StackPanel();
-        _normal   = AddKnob(groups, "Normal Shadows",  "Regular field shadows (plain minimap dot). Baseline — 1× EXP.", _config.NormalShadowExp);
+        _normal   = AddKnob(groups, "Normal Shadows",  "Regular field shadows (plain minimap dot). The 1× EXP baseline.", _config.NormalShadowExp);
         _strong   = AddKnob(groups, "Strong Shadows",  "Tankier glowing field shadows. ~4× a normal's EXP.", _config.StrongShadowExp);
         _rare     = AddKnob(groups, "Rare Shadows",    "Gold-bordered fleeing shadows. ~15× normal EXP.", _config.RareShadowExp);
         _miniboss = AddKnob(groups, "Minibosses",      "Tanky 'guardian' encounters (gatekeepers / Monad). ~2× normal.", _config.MinibossExp);

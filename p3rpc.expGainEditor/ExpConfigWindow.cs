@@ -47,7 +47,6 @@ internal sealed class ExpConfigWindow : Window
 
     private readonly Config _config;
     private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _miniboss = null!, _boss = null!, _strength = null!, _wand = null!;
-    private CheckBox _log = null!;
     private Canvas _graph = null!;
 
     // hover crosshair: a transparent overlay canvas (never cleared by RedrawGraph) tracks the cursor and
@@ -100,13 +99,12 @@ internal sealed class ExpConfigWindow : Window
     // ---- layout ---------------------------------------------------------
     private UIElement BuildLayout()
     {
-        var root = new StackPanel { Margin = new Thickness(14), Width = 460 };
+        var root = new StackPanel { Margin = new Thickness(14) };
 
         // 1. Global
         var global = new StackPanel();
         _global = AddKnob(global, "All Enemy EXP",
             "Multiplies every enemy's EXP. Stacks on top of the per-group multipliers below.", _config.GlobalEnemyExp);
-        root.Children.Add(Section("1.  Global", global));
 
         // 2. Enemy Groups
         var groups = new StackPanel();
@@ -115,33 +113,45 @@ internal sealed class ExpConfigWindow : Window
         _rare     = AddKnob(groups, "Rare Shadows",    "Gold-bordered fleeing shadows. ~15× normal EXP.", _config.RareShadowExp);
         _miniboss = AddKnob(groups, "Minibosses",      "Tanky 'guardian' encounters (gatekeepers / Monad). ~2× normal.", _config.MinibossExp);
         _boss     = AddKnob(groups, "Bosses",          "Story / endgame bosses & superbosses. ~30× normal (roughly 25–45×).", _config.BossExp);
-        root.Children.Add(Section("2.  Enemy Groups", groups));
 
         // 3. Level Scaling (slider + the live curve graph)
         var scaling = new StackPanel();
-        _strength = AddKnob(scaling, "Level-Gap Scaling Strength",
-            "Blends the level-gap curve below toward flat. 1 = vanilla, 0 = flat (level ignored, every kill gives base EXP), >1 exaggerates the bonus/penalty.",
-            _config.LevelGapScalingStrength, sliderMax: 3.0, onChanged: RedrawGraph);
+        _strength = AddKnob(scaling, "Scaling Strength",
+            "Blends the curve below toward flat: 1 = vanilla, 0 = level ignored, >1 exaggerates the bonus/penalty.",
+            _config.LevelGapScalingStrength, onChanged: RedrawGraph);
         scaling.Children.Add(BuildGraphCard());
-        root.Children.Add(Section("3.  Level Scaling", scaling));
 
         // 4. Shuffle Time
         var shuffle = new StackPanel();
         _wand = AddKnob(shuffle, "Wand Card EXP",
             "EXP granted by Wand minor-arcana cards during Shuffle Time.", _config.ShuffleWandExp);
-        root.Children.Add(Section("4.  Shuffle Time", shuffle));
 
-        // 5. Debug
-        var debug = new StackPanel();
-        _log = new CheckBox
-        {
-            Content = "Log what the mod baked to the Reloaded console",
-            Foreground = Text,
-            IsChecked = _config.LogToConsole,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        debug.Children.Add(_log);
-        root.Children.Add(Section("5.  Debug", debug));
+        // Two columns to keep the window short enough for 720p/1080p. Left: the enemy-EXP knobs.
+        // Right: level scaling (with the graph) and shuffle. Each column is a DockPanel whose LAST section
+        // fills the remaining height, so the shorter column's bottom card stretches to align its bottom
+        // edge with the taller column (self-balancing, no pixel tuning).
+        var globalSec = Section("1.  Global", global);
+        var enemySec = Section("2.  Enemy Groups", groups);
+        DockPanel.SetDock(globalSec, Dock.Top);
+        var leftCol = new DockPanel { Width = 372 };
+        leftCol.Children.Add(globalSec);
+        leftCol.Children.Add(enemySec);     // fills remaining height
+
+        var scalingSec = Section("3.  Level Scaling", scaling);
+        var shuffleSec = Section("4.  Shuffle Time", shuffle);
+        DockPanel.SetDock(scalingSec, Dock.Top);
+        var rightCol = new DockPanel { Width = 480, Margin = new Thickness(12, 0, 0, 0) };
+        rightCol.Children.Add(scalingSec);
+        rightCol.Children.Add(shuffleSec);  // fills remaining height
+
+        var cols = new Grid();
+        cols.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        cols.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(leftCol, 0);
+        Grid.SetColumn(rightCol, 1);
+        cols.Children.Add(leftCol);
+        cols.Children.Add(rightCol);
+        root.Children.Add(cols);
 
         // footer
         var bottom = new DockPanel { Margin = new Thickness(2, 14, 2, 0) };
@@ -195,7 +205,7 @@ internal sealed class ExpConfigWindow : Window
         public double Value;
     }
 
-    private Knob AddKnob(StackPanel parent, string label, string desc, double initial, double sliderMax = 10.0, Action? onChanged = null)
+    private Knob AddKnob(StackPanel parent, string label, string desc, double initial, double sliderMax = 5.0, Action? onChanged = null)
     {
         var knob = new Knob { Value = initial };
 
@@ -264,18 +274,20 @@ internal sealed class ExpConfigWindow : Window
         slider.Value = Math.Min(initial, sliderMax);
         syncing = false;
 
-        // header line: label .... textbox
-        var head = new DockPanel { Margin = new Thickness(0, 0, 0, 1) };
-        var name = new TextBlock { Text = label, Foreground = Text, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        // Compact 2-line knob: row 1 = label | slider | value (one line); row 2 = description.
+        slider.Margin = new Thickness(0, 0, 8, 0);
+        slider.VerticalAlignment = VerticalAlignment.Center;
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
+        var name = new TextBlock { Text = label, Foreground = Text, FontWeight = FontWeights.SemiBold, Width = 118, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         DockPanel.SetDock(name, Dock.Left);
-        head.Children.Add(name);
         DockPanel.SetDock(box, Dock.Right);
-        head.Children.Add(box);
+        row.Children.Add(name);     // left
+        row.Children.Add(box);      // right
+        row.Children.Add(slider);   // fills the middle
 
-        var block = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
-        block.Children.Add(head);
-        block.Children.Add(new TextBlock { Text = desc, Foreground = Sub, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 2) });
-        block.Children.Add(slider);
+        var block = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+        block.Children.Add(row);
+        block.Children.Add(new TextBlock { Text = desc, Foreground = Sub, FontSize = 11, TextWrapping = TextWrapping.Wrap });
         parent.Children.Add(block);
 
         return knob;
@@ -497,7 +509,6 @@ internal sealed class ExpConfigWindow : Window
         _config.BossExp = _boss.Value;
         _config.LevelGapScalingStrength = _strength.Value;
         _config.ShuffleWandExp = _wand.Value;
-        _config.LogToConsole = _log.IsChecked == true;
         _config.Save?.Invoke();
 
         DialogResult = true;

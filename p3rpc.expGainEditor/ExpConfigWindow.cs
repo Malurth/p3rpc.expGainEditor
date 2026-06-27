@@ -236,6 +236,14 @@ internal sealed class ExpConfigWindow : Window
                 onChanged?.Invoke();
             }
         };
+        // One click = whole value selected, ready to type. Without this, WPF places the caret at the
+        // click point and cancels the select-all; handling the first mouse-down (when not yet focused)
+        // suppresses that. A second click in an already-focused box still places the caret to edit.
+        box.PreviewMouseLeftButtonDown += (s, e) =>
+        {
+            var t = (TextBox)s;
+            if (!t.IsKeyboardFocusWithin) { t.Focus(); e.Handled = true; }
+        };
         box.GotKeyboardFocus += (s, _) => ((TextBox)s).SelectAll();
 
         // initial values (guarded so the handlers above don't fight each other)

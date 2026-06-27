@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <OutputPath>$(RELOADEDIIMODS)/p3rpc.expGainEditor</OutputPath>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ReloadedILLink>false</ReloadedILLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ReloadedLinkRoots Include="p3rpc.expGainEditor" />
+  </ItemGroup>
+
+  <!-- UseWPF switches to the WindowsDesktop SDK, whose implicit-usings profile drops System.IO
+       (and System.Net.Http) that the unedited Template files rely on. Re-add System.IO. -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <Import Project="Reloaded.Trimming.targets" />
+  <Import Project="Reloaded.Checks.targets" />
+
+  <ItemGroup>
+    <None Remove="ModConfig.json" />
+    <None Remove="BuildLinked.ps1" />
+    <None Remove="Reloaded.Trimming.targets" />
+    <None Remove="Reloaded.Checks.targets" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="ModConfig.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Reloaded.Mod.Interfaces" Version="2.3.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Reloaded.SharedLib.Hooks" Version="1.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Compile-time only (vendored so CI can build); provided at runtime by the Unreal Essentials mod. -->
+    <Reference Include="UnrealEssentials.Interfaces">
+      <HintPath>lib\UnrealEssentials.Interfaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -30,6 +30,8 @@ internal sealed class ExpConfigWindow : Window
     private static readonly Brush Edge   = Frozen("#FF3F3F46");
     private static readonly Brush Accent = Frozen("#FF4C7DF0");
     private static readonly Brush Chip   = Frozen("#FF333337");
+    private static readonly Brush Guide  = Frozen("#FFC8C8CE");   // hover crosshair guide lines
+    private static readonly Brush LabelBg = Frozen("#F0121214");  // hover readout chip background
 
     private static SolidColorBrush Frozen(string hex)
     {
@@ -47,6 +49,16 @@ internal sealed class ExpConfigWindow : Window
     private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _miniboss = null!, _boss = null!, _strength = null!, _wand = null!;
     private CheckBox _log = null!;
     private Canvas _graph = null!;
+
+    // hover crosshair: a transparent overlay canvas (never cleared by RedrawGraph) tracks the cursor and
+    // reads the current curve. _curRatios/_maxY are the last-drawn current curve so hover can interpolate.
+    private Canvas _overlay = null!;
+    private double _maxY = 4.0;
+    private double[] _curRatios = new double[Vanilla.Length];
+    private Line _hvV = null!;
+    private Ellipse _hvDot = null!;
+    private Border _hvLabel = null!;
+    private TextBlock _hvText = null!;
 
     /// <summary>Entry point: show the editor modally for the given config (on the WPF UI thread).</summary>
     public static void Edit(Config config)
@@ -277,16 +289,85 @@ internal sealed class ExpConfigWindow : Window
     {
         _graph = new Canvas { Width = GraphW, Height = GraphH, Background = Bg, ClipToBounds = true };
 
+        // Transparent overlay on top of the graph: receives hover, draws the crosshair. RedrawGraph only
+        // clears _graph, so the crosshair survives slider changes. Transparent bg still hit-tests.
+        _overlay = new Canvas { Width = GraphW, Height = GraphH, Background = Brushes.Transparent, ClipToBounds = true };
+        BuildCrosshair();
+        _overlay.MouseMove += OnGraphHover;
+        _overlay.MouseLeave += (_, __) => SetCrosshair(false);
+
+        var stack = new Grid { Width = GraphW, Height = GraphH };
+        stack.Children.Add(_graph);
+        stack.Children.Add(_overlay);
+
         var legend = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(2, 6, 0, 0) };
         legend.Children.Add(LegendSwatch(Sub, "vanilla", dashed: true));
         legend.Children.Add(LegendSwatch(Accent, "current", dashed: false));
-        var note = new TextBlock { Text = "x = enemy level − yours (clamped ±10)   •   y = EXP multiplier", Foreground = Sub, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0) };
+        var note = new TextBlock { Text = "x = enemy lvl − yours (±10)   •   hover to read a point", Foreground = Sub, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0) };
         legend.Children.Add(note);
 
         var wrap = new StackPanel { Margin = new Thickness(0, 4, 0, 4) };
-        wrap.Children.Add(new Border { Background = Bg, BorderBrush = Edge, BorderThickness = new Thickness(1), Child = _graph });
+        wrap.Children.Add(new Border { Background = Bg, BorderBrush = Edge, BorderThickness = new Thickness(1), Child = stack });
         wrap.Children.Add(legend);
         return new Border { Background = Panel, Child = wrap };   // explicit bg (see Section: theme leak)
+    }
+
+    private void BuildCrosshair()
+    {
+        _hvV = new Line { Stroke = Guide, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 2, 2 }, Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+        _hvDot = new Ellipse { Width = 9, Height = 9, Fill = Accent, Stroke = Text, StrokeThickness = 1.5, Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+        _hvText = new TextBlock { Foreground = Text, FontSize = 11 };
+        _hvLabel = new Border
+        {
+            Background = LabelBg,
+            BorderBrush = Edge,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(3),
+            Padding = new Thickness(6, 3, 6, 3),
+            Child = _hvText,
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false,
+        };
+        _overlay.Children.Add(_hvV);
+        _overlay.Children.Add(_hvDot);
+        _overlay.Children.Add(_hvLabel);
+    }
+
+    private void OnGraphHover(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        double plotW = GraphW - PadL - PadR, plotH = GraphH - PadT - PadB;
+        double baseY = PadT + plotH;                          // y for ratio = 0 (the x-axis)
+        double mx = Math.Clamp(e.GetPosition(_overlay).X, PadL, GraphW - PadR);
+        double t = (mx - PadL) / plotW;                       // 0..1 across the gap axis
+        double idxF = t * (Vanilla.Length - 1);
+        int i0 = Math.Min((int)Math.Floor(idxF), Vanilla.Length - 2);
+        double frac = idxF - i0;
+        double ratio = _curRatios[i0] + (_curRatios[i0 + 1] - _curRatios[i0]) * frac;   // curve value at mx
+        double cy = PadT + plotH * (1.0 - ratio / _maxY);
+
+        // A single vertical guide rising from the x-axis to the dot on the curve. No horizontal line.
+        _hvV.X1 = mx; _hvV.Y1 = baseY; _hvV.X2 = mx; _hvV.Y2 = cy;
+        Canvas.SetLeft(_hvDot, mx - _hvDot.Width / 2);
+        Canvas.SetTop(_hvDot, cy - _hvDot.Height / 2);
+
+        int gap = (int)Math.Round(-10 + t * 20.0);
+        _hvText.Text = $"{(gap > 0 ? "+" : "")}{gap} lvl   →   {ratio:0.00}×";
+        _hvLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double lw = _hvLabel.DesiredSize.Width, lh = _hvLabel.DesiredSize.Height;
+        double lx = mx + 10; if (lx + lw > GraphW - PadR) lx = mx - 10 - lw;   // flip near right edge
+        lx = Math.Max(PadL, lx);
+        double ly = cy - lh - 8; if (ly < PadT) ly = cy + 10;                  // flip below if near top
+        Canvas.SetLeft(_hvLabel, lx);
+        Canvas.SetTop(_hvLabel, ly);
+
+        SetCrosshair(true);
+    }
+
+    private void SetCrosshair(bool on)
+    {
+        if (_hvV == null) return;
+        var v = on ? Visibility.Visible : Visibility.Collapsed;
+        _hvV.Visibility = v; _hvDot.Visibility = v; _hvLabel.Visibility = v;
     }
 
     private UIElement LegendSwatch(Brush color, string label, bool dashed)
@@ -312,6 +393,8 @@ internal sealed class ExpConfigWindow : Window
         double curMax = 0;
         for (int i = 0; i < Vanilla.Length; i++) { cur[i] = Transform(Vanilla[i], s); if (cur[i] > curMax) curMax = cur[i]; }
         double maxY = Math.Max(4.0, Math.Ceiling(Math.Max(curMax, Vanilla[^1])));
+        _curRatios = cur; _maxY = maxY;          // publish for the hover crosshair
+        SetCrosshair(false);                     // hide stale crosshair while the curve changes
         int yStep = maxY <= 4 ? 1 : maxY <= 8 ? 2 : (int)Math.Ceiling(maxY / 4.0);
 
         double plotW = GraphW - PadL - PadR, plotH = GraphH - PadT - PadB;

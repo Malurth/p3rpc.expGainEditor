@@ -178,7 +178,7 @@ param (
     $GitHubFallbackPattern = "", # For migrating from legacy build script.
     $GitHubInheritVersionFromTag = $True, # Uses version determined from release tag as opposed to metadata file in latest release.
 
-    $GameBananaItemId = 0, # TODO: set after creating the GameBanana page (URL gives the id). 0 = none yet.
+    $GameBananaItemId = 689654, # From mod page URL: https://gamebanana.com/mods/689654
 
     $NuGetPackageId = "p3rpc.expGainEditor",
     $NuGetFeedUrl = "http://packages.sewer56.moe:5000/v3/index.json",

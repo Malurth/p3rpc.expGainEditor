@@ -2,7 +2,7 @@
   "ModId": "p3rpc.expGainEditor",
   "ModName": "P3R EXP Gain Editor",
   "ModAuthor": "Malurth",
-  "ModVersion": "1.1.1",
+  "ModVersion": "1.1.2",
   "ModDescription": "Tune Persona 3 Reload's EXP gains from a custom editor window with a live level-gap curve graph: a global multiplier, per-enemy-group multipliers (normal / strong / rare shadows, minibosses, bosses), the level-gap EXP scaling strength, and Shuffle Time Wand-card EXP. Defaults to vanilla - change only what you want.",
   "ModDll": "p3rpc.expGainEditor.dll",
   "ModR2RManagedDll32": "x86/p3rpc.expGainEditor.dll",
@@ -20,6 +20,10 @@
       "RepositoryName": "p3rpc.expGainEditor",
       "UseReleaseTag": true,
       "AssetFileName": "Mod.zip"
+    },
+    "GameBanana": {
+      "ItemType": "Mod",
+      "ItemId": 689654
     },
     "GitHubDependencies": {
       "IdToConfigMap": {

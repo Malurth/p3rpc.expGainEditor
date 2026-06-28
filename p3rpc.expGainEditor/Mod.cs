@@ -36,21 +36,24 @@ public class Mod : ModBase
 
     // ---- enemy tiers ----
     // Order MUST match the group ints baked into BakeData. Tiers are classified OFFLINE (see the gen
-    // scripts / BakeData header) from each enemy's `flags` bitfield + EXP-for-level reward:
-    //   Normal  = flags 0                         (~1x EXP)
-    //   Strong  = flags bit 15 (0x8000)           (~4x, tanky glowing field shadows)
-    //   Rare    = flags bit 9  (0x200)            (~15x, low-HP gold fleeing shadows)
-    //   Miniboss= flags bit 8  (0x100), low reward(~2x, tanky guardians: gatekeepers/Monad)
-    //   Boss    = flags bit 8  (0x100), high reward(~30x, story/endgame/superbosses)
-    //   Reaper  = the lone roaming superboss (race 14, 175820 EXP) carved out of Boss for its own knob
-    public enum EnemyGroup { Normal, Strong, Rare, Miniboss, Boss, Reaper }
+    // scripts / BakeData header) by matching each record to the megaten-fusion-tool datamine (name + area):
+    //   Normal     = regular field shadows                 (~1x EXP)
+    //   Strong     = tanky glowing field shadows (bit 15)  (~4x)
+    //   Rare       = the gold fleeing Hand/Checkmate shadows (bit 9)  (~10-15x)
+    //   Monad      = elites behind Monad doors/passages    (~2x, loot-not-EXP)
+    //   Gatekeeper = the Tartarus block guardians          (~20-50x)
+    //   Boss       = story/full-moon bosses & superbosses  (~20-60x)
+    //   Reaper     = the lone roaming superboss (175820 EXP)
+    // (Episode Aigis / Astrea has no Monad/Gatekeeper/Full-Moon, so its enemies map to Normal/Strong/Rare/Boss.)
+    public enum EnemyGroup { Normal, Strong, Rare, Monad, Gatekeeper, Boss, Reaper }
 
     private double GroupMultiplier(EnemyGroup g) => _configuration.GlobalEnemyExp * (g switch
     {
         EnemyGroup.Normal => _configuration.NormalShadowExp,
         EnemyGroup.Strong => _configuration.StrongShadowExp,
         EnemyGroup.Rare => _configuration.RareShadowExp,
-        EnemyGroup.Miniboss => _configuration.MinibossExp,
+        EnemyGroup.Monad => _configuration.MonadExp,
+        EnemyGroup.Gatekeeper => _configuration.GatekeeperExp,
         EnemyGroup.Boss => _configuration.BossExp,
         EnemyGroup.Reaper => _configuration.ReaperExp,
         _ => 1.0,

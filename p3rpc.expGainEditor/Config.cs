@@ -35,25 +35,31 @@ public class Config : Configurable<Config>
 
     [Category("2. Enemy Groups")]
     [DisplayName("Rare Shadows")]
-    [Description("EXP multiplier for rare shadows (the gold-bordered fleeing encounters; ~15x normal EXP). 1.0 = vanilla.")]
+    [Description("EXP multiplier for rare shadows - the gold-bordered fleeing Hands/Checkmates (~10-15x normal EXP). 1.0 = vanilla.")]
     [DefaultValue(1.0)]
     public double RareShadowExp { get; set; } = 1.0;
 
     [Category("2. Enemy Groups")]
-    [DisplayName("Minibosses")]
-    [Description("EXP multiplier for minibosses - the tanky boss-type 'guardian' encounters (block gatekeepers, Monad); modest reward, ~2x normal EXP. 1.0 = vanilla.")]
+    [DisplayName("Monad Shadows")]
+    [Description("EXP multiplier for the elite shadows behind Monad doors and passages (~2x normal EXP). 1.0 = vanilla.")]
     [DefaultValue(1.0)]
-    public double MinibossExp { get; set; } = 1.0;
+    public double MonadExp { get; set; } = 1.0;
+
+    [Category("2. Enemy Groups")]
+    [DisplayName("Gatekeepers")]
+    [Description("EXP multiplier for the Tartarus block gatekeepers - the guardians that gate progress on certain floors. Boss-tier EXP (~20-50x normal). 1.0 = vanilla.")]
+    [DefaultValue(1.0)]
+    public double GatekeeperExp { get; set; } = 1.0;
 
     [Category("2. Enemy Groups")]
     [DisplayName("Bosses")]
-    [Description("EXP multiplier for major story/endgame bosses and superbosses (the highest-EXP enemies; ~30x normal EXP, roughly 25-45x). Excludes the Reaper (see below). 1.0 = vanilla.")]
+    [Description("EXP multiplier for story/full-moon bosses and superbosses (~20-60x normal EXP). Excludes gatekeepers and the Reaper. 1.0 = vanilla.")]
     [DefaultValue(1.0)]
     public double BossExp { get; set; } = 1.0;
 
     [Category("2. Enemy Groups")]
     [DisplayName("The Reaper")]
-    [Description("EXP multiplier for the Reaper - the lone roaming superboss and famous EXP farm (175,820 base EXP, by far the most in the game). Split out of the Bosses group so you can tune him on his own. 1.0 = vanilla.")]
+    [Description("EXP multiplier for the Reaper - the lone roaming superboss and famous EXP farm (175,820 base EXP, by far the most in the game). 1.0 = vanilla.")]
     [DefaultValue(1.0)]
     public double ReaperExp { get; set; } = 1.0;
 

@@ -8,12 +8,15 @@ Everything defaults to vanilla, so the mod changes nothing until you turn a knob
 
 - **A real editor window** (opened from **Configure**) — every knob is a slider paired with a textbox (the textbox takes over-range values past the slider).
 - **Global multiplier** — scales the EXP every enemy gives, on top of the per-group knobs.
-- **Per enemy-group multipliers**, classified from each enemy's internal class flags:
+- **Per enemy-group multipliers**, classified per enemy via the megaten-fusion-tool datamine:
   - **Normal Shadows** — regular field shadows (baseline, 1× EXP)
   - **Strong Shadows** — tankier glowing field shadows (~4× normal)
-  - **Rare Shadows** — gold-bordered fleeing shadows (~15× normal)
-  - **Minibosses** — tanky "guardian" encounters, e.g. gatekeepers / Monad (~2× normal)
-  - **Bosses** — story / endgame bosses & superbosses (~30× normal)
+  - **Rare Shadows** — gold-bordered fleeing Hands/Checkmates (~10–15× normal)
+  - **Monad Shadows** — elites behind Monad doors/passages (~2× normal; loot reward, not EXP)
+  - **Gatekeepers** — the Tartarus block guardians (~20–50× normal)
+  - **Bosses** — story / full-moon bosses & superbosses (~20–60× normal)
+  - **The Reaper** — the lone roaming superboss (its own slider)
+  - *(Episode Aigis enemies map to Normal/Strong/Rare/Boss, since that mode has no Monad/gatekeepers.)*
 - **Level-Gap Scaling Strength** — blends the game's "enemy level vs yours" EXP curve toward flat (1 = vanilla, 0 = level ignored, >1 exaggerates), with a **live curve graph** that redraws as you drag the slider.
 - **Shuffle Time Wand-card EXP** — scales the EXP granted by Wand minor-arcana cards.
 - Everything defaults to vanilla; change only what you want.

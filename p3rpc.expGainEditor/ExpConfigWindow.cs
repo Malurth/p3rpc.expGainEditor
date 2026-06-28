@@ -46,7 +46,7 @@ internal sealed class ExpConfigWindow : Window
         { 0.32, 0.40, 0.48, 0.53, 0.59, 0.64, 0.73, 0.80, 0.86, 0.91, 1.0, 1.0, 1.0, 1.0, 1.04, 1.19, 1.46, 1.77, 2.30, 3.10, 4.0 };
 
     private readonly Config _config;
-    private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _miniboss = null!, _boss = null!, _reaper = null!, _strength = null!, _wand = null!;
+    private Knob _global = null!, _normal = null!, _strong = null!, _rare = null!, _monad = null!, _gatekeeper = null!, _boss = null!, _reaper = null!, _strength = null!, _wand = null!;
     private Canvas _graph = null!;
 
     // hover crosshair: a transparent overlay canvas (never cleared by RedrawGraph) tracks the cursor and
@@ -110,10 +110,11 @@ internal sealed class ExpConfigWindow : Window
         var groups = new StackPanel();
         _normal   = AddKnob(groups, "Normal Shadows",  "Regular field shadows (plain minimap dot). The 1× EXP baseline.", _config.NormalShadowExp);
         _strong   = AddKnob(groups, "Strong Shadows",  "Tankier glowing field shadows. ~4× a normal's EXP.", _config.StrongShadowExp);
-        _rare     = AddKnob(groups, "Rare Shadows",    "Gold-bordered fleeing shadows. ~15× normal EXP.", _config.RareShadowExp);
-        _miniboss = AddKnob(groups, "Minibosses",      "Tanky 'guardian' encounters (gatekeepers / Monad). ~2× normal.", _config.MinibossExp);
-        _boss     = AddKnob(groups, "Bosses",          "Story / endgame bosses & superbosses. ~30× normal (roughly 25–45×). Excludes the Reaper.", _config.BossExp);
-        _reaper   = AddKnob(groups, "The Reaper",      "The lone roaming superboss & famous EXP farm (175,820 base EXP). Split out of Bosses so you can tune him alone.", _config.ReaperExp);
+        _rare       = AddKnob(groups, "Rare Shadows",  "Gold-bordered fleeing shadows (the Hands). ~10–15× normal EXP.", _config.RareShadowExp);
+        _monad      = AddKnob(groups, "Monad Shadows", "Elite shadows behind Monad doors & passages. ~2× normal EXP.", _config.MonadExp);
+        _gatekeeper = AddKnob(groups, "Gatekeepers",   "The Tartarus block guardians that gate floor progress. Boss-tier EXP (~20–50× normal).", _config.GatekeeperExp);
+        _boss       = AddKnob(groups, "Bosses",        "Story / full-moon bosses & superbosses. ~20–60× normal EXP. Excludes gatekeepers & the Reaper.", _config.BossExp);
+        _reaper     = AddKnob(groups, "The Reaper",    "The lone roaming superboss & famous EXP farm (175,820 base EXP).", _config.ReaperExp);
 
         // 3. Level Scaling (slider + the live curve graph). DockPanel so the graph card fills the section's
         // height (the section is the right column's stretchy filler), letting the graph grow with no gap.
@@ -521,7 +522,8 @@ internal sealed class ExpConfigWindow : Window
         _config.NormalShadowExp = _normal.Value;
         _config.StrongShadowExp = _strong.Value;
         _config.RareShadowExp = _rare.Value;
-        _config.MinibossExp = _miniboss.Value;
+        _config.MonadExp = _monad.Value;
+        _config.GatekeeperExp = _gatekeeper.Value;
         _config.BossExp = _boss.Value;
         _config.ReaperExp = _reaper.Value;
         _config.LevelGapScalingStrength = _strength.Value;

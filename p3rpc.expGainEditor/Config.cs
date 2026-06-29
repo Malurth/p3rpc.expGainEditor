@@ -76,7 +76,7 @@ public class Config : Configurable<Config>
     // ---- shuffle time ----------------------------------------------------
     [Category("4. Shuffle Time")]
     [DisplayName("Wand Card EXP")]
-    [Description("Multiplies the EXP granted by Wand minor-arcana cards during Shuffle Time (DatShuffleWandArcanaDataAsset). 1.0 = vanilla.")]
+    [Description("Scales the EXP coefficient on Shuffle Time Wand cards. A Wand card multiplies that battle's EXP (vanilla 1.1x for the smallest card up to 2.5x for the largest); this slider scales those coefficients, so 2.0 doubles a card's bonus and 0 makes Wand cards give no EXP. 1.0 = vanilla.")]
     [DefaultValue(1.0)]
     public double ShuffleWandExp { get; set; } = 1.0;
 

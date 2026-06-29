@@ -130,7 +130,7 @@ internal sealed class ExpConfigWindow : Window
         // 4. Shuffle Time
         var shuffle = new StackPanel();
         _wand = AddKnob(shuffle, "Wand Card EXP",
-            "EXP granted by Wand minor-arcana cards during Shuffle Time.", _config.ShuffleWandExp);
+            "Scales the EXP multiplier a Shuffle Time Wand card gives (vanilla 1.1x-2.5x by card rank).", _config.ShuffleWandExp);
 
         // Two columns to keep the window short enough for 720p/1080p. Left: the enemy-EXP knobs.
         // Right: level scaling (with the graph) and shuffle. The columns self-balance: the left fills its
